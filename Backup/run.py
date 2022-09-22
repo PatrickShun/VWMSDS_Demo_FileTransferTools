@@ -88,9 +88,9 @@ def push_file():
 
 
 def total_quantity(comm_type, filetype, total_path):
-    # total_quantity = 'adb' or 'other' 用于区分在手机的还是本地执行
-    # filetype = 'wav' or 'txt'
-    # total_path = '/sdcard/audiowav/en_us/hotword1'
+    # total_quantity = adb or '' 用于区分统计手机的还是本地的
+    # filetype = wav or txt
+    # total_path = eg:/sdcard/audiowav/en_us/hotword1
     if comm_type == 'adb':
         ad = 'adb shell '
     else:
@@ -99,6 +99,7 @@ def total_quantity(comm_type, filetype, total_path):
     ret = subprocess.Popen(adbcomm, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
     ret.wait()
     numb = int(ret.stdout.read())
+    # print(adbcomm, numb)
     return numb
 
 
@@ -156,15 +157,15 @@ def statistics_results_txt():
            language_dev_num['zh_tw'], language_loc_num['zh_tw'], len=lens, str='txt_num'))
 
 
-def decompress(current_path, target_path):  # 未完成，目前发现解压文件如果含有冒号【：】就解压失败。
+def decompress(current_path, target_path):
     print(current_path, target_path)
 
 
 def irun():
     print('====:: %s ::====' % project_path)
     if check_devces_file():  # 此方法用于检查手机是否存在audiowav文件夹，如无则运行create_android_dir();
-        create_android_dir()  # 创建必须的文件夹
-        push_file()  # push本地的wav文件和txt文件到手机;
+        # create_android_dir()  # 创建必须的文件夹
+        # push_file()  # push本地的wav文件和txt文件到手机;
         statistics_results_wav()  # push完成后，用于检查wav文件数量是否一致；
         statistics_results_txt()  # push完成后，用于检查txt文件数量是否一致；
     else:
@@ -175,3 +176,4 @@ def irun():
 if __name__ == "__main__":
     config = GetConfig.Config()  # 初始化配置文件以及数据
     irun()
+    # decompress('/home/xslan/Downloads/中文交付测试全集_20191107.zip', '/sdcar/audiowav/')
