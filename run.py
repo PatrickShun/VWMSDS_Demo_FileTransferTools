@@ -1,26 +1,24 @@
-#! /usr/bin/env python
-# 用于Push 文件到Android手机
+# coding:utf-8
+# -- coding: UTF-8 --
+
 import os
 import subprocess
 import GetConfig
 from time import sleep
 
-config = GetConfig.Config()  # 初始化配置文件以及数据。
-audio_path = config.audio_path  # 获取本地音频路径
-project_path = config.project  # 获取需要push的项目
-phone_path = config.phonepath  # 获取目标音频路径
+config = GetConfig.Config()         # 初始化配置文件以及数据。
+audio_path = config.audio_path      # 获取本地音频路径
+project_path = config.project       # 获取需要push的项目
+phone_path = config.phonepath       # 获取目标音频路径
 language_list = config.language_list  # 获取所有语言的列表
-wavtype = config.wavtype  # 获取需要push的音频类型
+wavtype = config.wavtype            # 获取需要push的音频类型
 
 
 def runadb(commend):  # 用于执行adb命令，只需要传入命令即可执行。
-    print(commend)
-    sleep(0.1)
+    print(str(commend))
     ret = subprocess.run(commend, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
-    # ret = subprocess.Popen(commend, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8').wait()
-    # 此处不用popen方法是因为popen输出中文的时候会乱码。
     if ret.returncode == 0:
-        print('Success.')
+        print('Success.', ret.returncode)
         return str(ret.returncode)
     else:
         print('Error:', ret.stderr)
@@ -55,7 +53,6 @@ def push_file():
             for scenes in range(1, 5):
                 local_dir = os.path.join(audio_path, project_path, lang, wt + str(scenes))
                 phone_dir = os.path.join(phone_path, lang, wt + str(scenes))
-                # adbpush_wav = 'adb push ' + local_tar_dir + '/*.wav ' + '/sdcard/audiowav/'+lang+'/'+wt+str(scenes)
                 adbpush_wav = 'adb push %s/*.wav %s' % (local_dir, phone_dir)
                 runadb(adbpush_wav)
                 sleep(0.5)
@@ -69,7 +66,7 @@ def push_file():
                     print("Done, Push完成，数量正确！\n")
                 else:
                     print("！！！本地文件和手机文件的数量不一致，请检查！！！\n")
-
+        # push txt
         local_txt_dir = os.path.join(audio_path, project_path, lang)
         phone_txt_dir = os.path.join(phone_path, lang)
         adbpush_txt = 'adb push %s/*.txt %s' % (local_txt_dir, phone_txt_dir)
@@ -96,7 +93,7 @@ def total_quantity(comm_type, filetype, total_path):
     else:
         ad = ''
     adbcomm = '%sls -l %s | grep "^-" | grep -c "%s$"' % (ad, total_path, filetype)
-    ret = subprocess.Popen(adbcomm, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+    ret = subprocess.Popen(adbcomm, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='UTF-8')
     ret.wait()
     numb = int(ret.stdout.read())
     return numb
@@ -156,15 +153,45 @@ def statistics_results_txt():
            language_dev_num['zh_tw'], language_loc_num['zh_tw'], len=lens, str='txt_num'))
 
 
-def decompress(current_path, target_path):  # 未完成，目前发现解压文件如果含有冒号【：】就解压失败。
-    print(current_path, target_path)
+def colon_change(colon_name, iplatform):
+    try:
+        if iplatform == '1':
+            new_colon_name = colon_name.replace(":", "：")
+            return new_colon_name
+        elif iplatform == '2':
+            new_colon_name = colon_name.replace("：", ":")
+            return new_colon_name
+    except:
+        print('run.colon_change：error')
+
+def change_colonFile():
+    for lang in language_list:
+        for wt in wavtype:
+            for n in range(1, 5):
+                local_path = os.path.join(audio_path, project_path, lang, wt+str(n))
+                print('push %s ing...' % local_path)
+                for dir_path, subpaths, files in os.walk(local_path, topdown=True):
+                    for file in files:
+                        local_file_path = os.path.join(dir_path, file)
+                        device_file_path = os.path.join(phone_path, lang, wt + str(n))
+                        if ":" in file:
+                            small_colon = colon_change(local_file_path, '2')
+                            big_colon = colon_change(local_file_path, '1')
+                            runadb('mv %s %s' % (small_colon, big_colon))            # 重命名本地的文件未全角符号
+                            runadb('adb push %s %s' % (big_colon, device_file_path))  # push到手机
+                            device_file_path_detail1 = os.path.join(phone_path, lang, wt + str(n) + file)  # 获取手机的文件绝对路径
+                            device_file_path_detail2 = colon_change(device_file_path_detail1, '2')  # 获取手机的文件绝对路径
+                            runadb('adb shell rename %s %s' % (device_file_path_detail1, device_file_path_detail2))
+                        else:
+                            runadb('adb push %s %s' % (local_file_path, device_file_path))
 
 
 def irun():
     print('====:: %s ::====' % project_path)
-    if check_devces_file():  # 此方法用于检查手机是否存在audiowav文件夹，如无则运行create_android_dir();
-        create_android_dir()  # 创建必须的文件夹
-        push_file()  # push本地的wav文件和txt文件到手机;
+    if check_devces_file():       # 此方法用于检查手机是否存在audiowav文件夹，如无则运行create_android_dir();
+        create_android_dir()      # 创建必须的文件夹
+        # change_colonFile()      # 修改本地的冒号为全角冒号\\没能解决问题，较新的安卓系统无法使用半角冒号；
+        push_file()               # push本地的wav文件和txt文件到手机;
         statistics_results_wav()  # push完成后，用于检查wav文件数量是否一致；
         statistics_results_txt()  # push完成后，用于检查txt文件数量是否一致；
     else:
@@ -175,3 +202,4 @@ def irun():
 if __name__ == "__main__":
     config = GetConfig.Config()  # 初始化配置文件以及数据
     irun()
+
